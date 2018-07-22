@@ -4,6 +4,8 @@ var defaults = require("lodash/object/defaults");
 var fs = require("fs-extra");
 var path = require("path");
 var chokidar = require("chokidar");
+var request = require("request")
+
 
 
 module.exports = function (source, target, opts, notify) {
@@ -37,16 +39,31 @@ module.exports = function (source, target, opts, notify) {
     .on("ready", notify.bind(undefined, "watch", source))
     .on("add", watcherCopy(source, target, opts, notify))
     .on("addDir", watcherCopy(source, target, opts, notify))
-    .on("change", watcherCopy(source, target, opts, notify))
-    .on("unlink", watcherDestroy(source, target, opts, notify))
-    .on("unlinkDir", watcherDestroy(source, target, opts, notify))
+    .on("change", watchUploadFIle(source, target, opts, notify))
+    .on("unlink", watcherDelete(source, target, opts, notify) )
+    .on("unlinkDir", watcherDelete(source, target, opts, notify))
     .on("error", watcherError(opts, notify));
   }
 };
 
+
+function watchUploadFIle (source, target, opts, notify) {
+  console.log("up1",[source, target, opts, notify])
+  return function (f, stats) {
+    up(f, path.join(target, path.relative(source, f)), notify);
+  };
+}
+
 function watcherCopy (source, target, opts, notify) {
   return function (f, stats) {
     copy(f, path.join(target, path.relative(source, f)), notify);
+  };
+}
+
+function watcherDelete (source, target, opts, notify) {
+  return function (f, stats) {
+    Delete(f, path.join(target, path.relative(source, f)), notify);
+    watcherDestroy(f, path.join(target, path.relative(source, f)), notify);
   };
 }
 
@@ -134,7 +151,32 @@ function deleteExtra (fileordir, opts, notify) {
 function copy (source, target, notify) {
   notify("copy", [source, target]);
   try {
-    fs.copySync(source, target);
+    uploadFIle(source)
+    //fs.copySync(source, target);
+    return true;
+  } catch (e) {
+    notify("error", e);
+    return false;
+  }
+}
+
+function up (source, target, notify) {
+  console.log("up", [source, target]);
+  try {
+    uploadFIle(source)
+    //fs.copySync(source, target);
+    return true;
+  } catch (e) {
+    notify("error", e);
+    return false;
+  }
+}
+
+function Delete (source, target, notify) {
+  console.log("Delete", [source, target]);
+  try {
+    unlink(source)
+    //fs.copySync(source, target);
     return true;
   } catch (e) {
     notify("error", e);
@@ -145,10 +187,106 @@ function copy (source, target, notify) {
 function destroy (fileordir, notify) {
   notify("remove", fileordir);
   try {
-    fs.remove(fileordir);
+    //fs.remove(fileordir);
     return true;
   } catch (e) {
     notify("error", e);
     return false;
   }
 }
+
+const syncPath = "/home/david/Documentos/sucre-cloud-sync"
+const modifiPath=(path)=>{
+  return path.split(syncPath)[1]
+}
+
+const unlink = (path) => {
+
+
+  var r = request.post("http://orchi2:8080/api/", function(err, httpResponse, body) {
+    if (err) {
+      return console.error('upload failed:', err);
+    }
+    console.log('Upload successful!  Server responded with:', body);
+  });
+
+  var form = r.form();
+  form.append('args', JSON.stringify({
+    path: "/testSync/"+modifiPath(path),
+    op: "delete"
+  }));
+  //form.append('f', fs.createReadStream(path));
+}
+
+const uploadFIle = (path) => {
+
+  //var fd = new FormData()
+  /*fd.append("args", JSON.stringify({
+    path: "/",
+    op: "put"
+  }));
+  fd.append('f', fs.createReadStream(path));
+  var formData = {
+    my_field: 'f',
+    my_file: fs.createReadStream(path),
+  };*/
+  var r = request.post("http://orchi2:8080/api/", function(err, httpResponse, body) {
+    if (err) {
+      return console.error('upload failed:', err);
+    }
+    console.log('Upload successful!  Server responded with:', body);
+  });
+
+  var form = r.form();
+  form.append('args', JSON.stringify({
+    path: "/testSync"+getParent(modifiPath(path)),
+    op: "put"
+  }));
+  form.append('f', fs.createReadStream(path));
+}
+
+
+
+
+
+
+
+
+
+  const getParent = (path = "/") => {
+    let p = path.split("/").filter(x => x != "")
+
+    let parentPath = p.slice(0, p.length - 1).join("/")
+    var start = "/"
+    if (parentPath[0] == "/") {
+      start = ""
+    } else if (parentPath != "") {
+      start = ""
+    }
+    return isRoot(path) ? path : tryNormalize("/" + parentPath)
+  }
+
+  const getName = path => {
+    let ps=path.split("/").filter( _ => _ != "")
+    let name = ps.slice(ps.length-1,ps.length).join("");
+    return name == "" ? null:name
+
+  }
+
+  const mergePath = (path1, path2) => {
+    return  tryNormalize(path1 + "/" + path2)
+  }
+
+  const tryNormalize=(path)=>{
+    return isRoot(path) ? path : (path.replace(/\/{2,}/ig, "/")).replace(/(\/?){1,}$/ig,"").replace(/(\/+)$/ig,"")
+  }
+
+  const isRoot = (path)=>{
+    return path == "/"
+  }
+
+  const parsePath = (hashPath)=>{
+    var p = hashPath;
+  return p.substring(p.indexOf("#")+1);
+    //return hashPath.split("#")[1]
+  }
