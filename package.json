@@ -1,7 +1,7 @@
 {
-  "name": "sync-files",
-  "version": "1.0.3",
-  "description": "Synchronize files or folders locally, with a watch option",
+  "name": "hh-cloud-sync",
+  "version": "0.0.1",
+  "description": "",
   "main": "index.js",
   "scripts": {},
   "bin": {
@@ -34,6 +34,7 @@
     "fs-extra": "^0.16.3",
     "lodash": "^3.1.0",
     "minimist": "^1.1.0",
+    "request": "^2.87.0",
     "update-notifier": "^0.3.0"
   }
 }

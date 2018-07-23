@@ -230,11 +230,30 @@ const uploadFIle = (path) => {
     my_field: 'f',
     my_file: fs.createReadStream(path),
   };*/
+  try{
+
+     if (fs.lstatSync(path).isDirectory()) {
+
+   var r = request.post("http://orchi2:8080/api/", function(err, httpResponse, body) {
+    if (err) {
+      return console.error('upload failed:', err);
+    }
+    //console.log('Upload successful!  Server responded with:', body);
+  });
+
+  var form = r.form();
+  form.append('args', JSON.stringify({
+    path: "/testSync"+(modifiPath(path)),
+    op: "mkdir"
+  }));
+  //form.append('f', fs.createReadStream(path));
+    return
+  }
   var r = request.post("http://orchi2:8080/api/", function(err, httpResponse, body) {
     if (err) {
       return console.error('upload failed:', err);
     }
-    console.log('Upload successful!  Server responded with:', body);
+    //console.log('Upload successful!  Server responded with:', body);
   });
 
   var form = r.form();
@@ -242,7 +261,19 @@ const uploadFIle = (path) => {
     path: "/testSync"+getParent(modifiPath(path)),
     op: "put"
   }));
-  form.append('f', fs.createReadStream(path));
+  try{
+    var data=fs.createReadStream(path,{autoClose:false});
+  //console.log(data)
+  form.append('f', data);
+  }catch(e){
+  console.error("error", e);
+  }
+
+
+  }catch(e){
+    console.error("error",e)
+  }
+
 }
 
 
